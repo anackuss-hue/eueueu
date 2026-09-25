@@ -629,7 +629,7 @@ body[data-view="livros"] .quick{display:none}
       <div class="ph" data-ph="2"><button class="ph-add" type="button">+ sua foto</button><button class="ph-x" type="button" aria-label="Remover foto">×</button></div>
       <div class="ph" data-ph="3"><button class="ph-add" type="button">+ sua foto</button><button class="ph-x" type="button" aria-label="Remover foto">×</button></div>
       <div class="ph" data-ph="4"><button class="ph-add" type="button">+ sua foto</button><button class="ph-x" type="button" aria-label="Remover foto">×</button></div>
-      <div class="banner-title">Minha agenda</div>
+      <div class="banner-title">minha vida inteira</div>
     </div>
     <div class="hero-main">
       <div class="brand">
@@ -732,12 +732,9 @@ body[data-view="livros"] .quick{display:none}
       </div>
     </div>
     <div class="b-results" id="bResults" hidden></div>
-    <div class="row2">
-      <label class="field"><span>Status</span>
-        <select id="bStatus"><option value="lido">Lido</option><option value="lendo">Lendo</option><option value="quero">Quero ler</option></select>
-      </label>
-      <label class="field" id="bFinishedField"><span>Terminei em</span><input id="bFinished" type="date"></label>
-    </div>
+    <label class="field"><span>Status</span>
+      <select id="bStatus"><option value="lido">Lido</option><option value="lendo">Lendo</option><option value="quero">Quero ler</option></select>
+    </label>
     <div class="field"><span>Nota</span>
       <div class="rate" id="bRate"><button type="button" data-n="1" aria-label="1 estrela">★</button><button type="button" data-n="2" aria-label="2 estrelas">★</button><button type="button" data-n="3" aria-label="3 estrelas">★</button><button type="button" data-n="4" aria-label="4 estrelas">★</button><button type="button" data-n="5" aria-label="5 estrelas">★</button></div>
     </div>
@@ -1198,15 +1195,15 @@ function bookMatches(b){
 function viewLivros(){
   const arr=[...books.values()], year=new Date().getFullYear();
   const st=b=>b.status||"lido";
-  const lidosAno=arr.filter(b=>st(b)==="lido"&&b.finished&&b.finished.slice(0,4)===String(year)).length;
+  const lidosAno=arr.filter(b=>st(b)==="lido").length;
   const rated=arr.filter(b=>b.rating), media=rated.length?rated.reduce((s,b)=>s+b.rating,0)/rated.length:0;
   const textos=arr.reduce((s,b)=>s+(b.texts||[]).length,0);
   const counts={todos:arr.length,lido:arr.filter(b=>st(b)==="lido").length,lendo:arr.filter(b=>st(b)==="lendo").length,quero:arr.filter(b=>st(b)==="quero").length};
   let list=arr.filter(bookMatches); if(bookFilter!=="todos") list=list.filter(b=>st(b)===bookFilter);
   const ord={lendo:0,lido:1,quero:2};
-  list.sort((a,b)=>(ord[st(a)]-ord[st(b)])||((b.finished||b.createdAt||"")>(a.finished||a.createdAt||"")?1:-1));
+  list.sort((a,b)=>(ord[st(a)]-ord[st(b)])||((b.createdAt||"")>(a.createdAt||"")?1:-1));
   const head='<div class="lib-head"><div><p class="lib-kicker">Pessoal</p><h2 class="lib-title">Livros</h2></div></div>'+
-    '<div class="lib-stats"><div><strong>'+lidosAno+'</strong><span>lido'+(lidosAno===1?"":"s")+' em '+year+'</span></div><div><strong>'+(media?media.toFixed(1).replace(".",","):"0")+'</strong><span>nota média</span></div><div><strong>'+textos+'</strong><span>texto'+(textos===1?"":"s")+' escrito'+(textos===1?"":"s")+'</span></div></div>'+
+    '<div class="lib-stats"><div><strong>'+lidosAno+'</strong><span>livro'+(lidosAno===1?"":"s")+' lido'+(lidosAno===1?"":"s")+'</span></div><div><strong>'+(media?media.toFixed(1).replace(".",","):"0")+'</strong><span>nota média</span></div><div><strong>'+textos+'</strong><span>texto'+(textos===1?"":"s")+' escrito'+(textos===1?"":"s")+'</span></div></div>'+
     '<div class="lib-filter" role="group" aria-label="Filtrar livros">'+["todos","lido","lendo","quero"].map(k=>'<button type="button" data-bf="'+k+'" class="'+(bookFilter===k?"on":"")+'">'+(k==="todos"?"Todos":STATUS[k])+'<span>'+counts[k]+'</span></button>').join("")+'</div>';
   if(!arr.length) return head+empty("Sua estante está vazia","Adicione o primeiro livro com a capa, a sua nota e o que você escreveu sobre ele.");
   if(!list.length) return head+empty("Nada por aqui","Tente outro filtro ou outra palavra na busca.");
@@ -1226,12 +1223,12 @@ function textBlock(t){
   d.innerHTML='<div class="txt-h"><input class="txt-title" placeholder="Título do texto (opcional)" value="'+esc(t.title||"")+'"><input type="date" class="txt-date" value="'+esc(t.date||"")+'" aria-label="Data do texto"><button type="button" class="txt-x" aria-label="Apagar texto">×</button></div><textarea class="txt-body" placeholder="O que você achou, o que ficou com você">'+esc(t.body||"")+'</textarea>';
   return d;
 }
-function syncFinished(){$("bFinishedField").style.visibility=$("bStatus").value==="lido"?"visible":"hidden"}
+function syncFinished(){}
 function openBook(b){
   editingBook=b||null;
-  const d=b||{title:"",author:"",status:"lido",finished:todayISO(),rating:0,texts:[],cover:""};
+  const d=b||{title:"",author:"",status:"lido",rating:0,texts:[],cover:""};
   $("bTitleH").textContent=b?"Editar livro":"Novo livro";
-  $("bTitle").value=d.title||""; $("bAuthor").value=d.author||""; $("bStatus").value=d.status||"lido"; $("bFinished").value=d.finished||"";
+  $("bTitle").value=d.title||""; $("bAuthor").value=d.author||""; $("bStatus").value=d.status||"lido";
   bRating=d.rating||0; paintRate(); setCover(d.cover);
   $("bTexts").innerHTML=""; (d.texts||[]).forEach(t=>$("bTexts").appendChild(textBlock(t)));
   $("bResults").hidden=true; $("bResults").innerHTML="";
@@ -1290,7 +1287,7 @@ $("bookForm").addEventListener("submit",e=>{
   const title=$("bTitle").value.trim(); if(!title) return;
   const texts=[...$("bTexts").querySelectorAll(".txt")].map(el=>({id:el.dataset.id,title:el.querySelector(".txt-title").value.trim(),date:el.querySelector(".txt-date").value,body:el.querySelector(".txt-body").value})).filter(t=>t.title||t.body.trim());
   const base=editingBook?Object.assign({},editingBook):{id:uid(),createdAt:new Date().toISOString()};
-  Object.assign(base,{title,author:$("bAuthor").value.trim(),status:$("bStatus").value,finished:$("bStatus").value==="lido"?$("bFinished").value:"",rating:bRating,cover:bCoverData,texts});
+  Object.assign(base,{title,author:$("bAuthor").value.trim(),status:$("bStatus").value,rating:bRating,cover:bCoverData,texts});
   persistBook(base); $("bookDlg").close(); toast(editingBook?"Livro atualizado":"Livro adicionado à estante");
 });
 $("view").addEventListener("click",e=>{
@@ -1361,7 +1358,7 @@ async function loadEvents(force){
   if(evLoading||(!force&&Date.now()-evLoadedAt<10*60*1000)) return;
   if(typeof ICAL==="undefined") return;
   evLoading=true; evLoadedAt=Date.now(); if($("calDlg").open) paintCals();
-  const from=new Date(); from.setDate(from.getDate()-90); from.setHours(0,0,0,0);
+  const from=new Date(); from.setHours(0,0,0,0);
   const to=new Date(); to.setDate(to.getDate()+365);
   const res=await Promise.all(cals.map(async c=>{
     try{
@@ -1379,7 +1376,8 @@ async function loadEvents(force){
 function calOf(e){return cals.find(c=>c.id===e.cal)}
 function evByDay(){
   const m={};
-  events.forEach(e=>{if(!calOf(e))return;if(q&&!(e.title+" "+e.loc).toLowerCase().includes(q.toLowerCase()))return;(m[e.day]=m[e.day]||[]).push(e)});
+  const hoje=todayISO();
+  events.forEach(e=>{if(!calOf(e)||e.day<hoje)return;if(q&&!(e.title+" "+e.loc).toLowerCase().includes(q.toLowerCase()))return;(m[e.day]=m[e.day]||[]).push(e)});
   for(const k in m) m[k].sort((a,b)=>(b.allDay-a.allDay)||a.start.localeCompare(b.start));
   return m;
 }
