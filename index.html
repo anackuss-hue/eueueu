@@ -637,6 +637,7 @@ body[data-view="livros"] .quick{display:none}
     </div>
     <label class="field"><span>Título</span><input id="fTitle" required autocomplete="off"></label>
     <label class="field"><span>Descrição</span><textarea id="fNotes" placeholder="Detalhes, contexto, links"></textarea></label>
+    <label class="field"><span>Pedido para</span><input id="fPerson" list="peopleList" autocomplete="off" placeholder="Deixe em branco se for você"></label>
     <div class="row2">
       <label class="field"><span>Data do pedido</span><input id="fReq" type="date"></label>
       <label class="field"><span>Data para conclusão</span><input id="fDue" type="date"></label>
@@ -651,7 +652,7 @@ body[data-view="livros"] .quick{display:none}
       </select>
     </label>
     <div hidden>
-      <input id="fPerson" list="peopleList"><input id="fTime" type="time"><input id="fArea" list="areaList">
+      <input id="fTime" type="time"><input id="fArea" list="areaList">
       <select id="fPrio"><option value="normal">Normal</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select>
     </div>
     <div class="hist" id="fHist" hidden></div>
@@ -1265,7 +1266,8 @@ $("edForm").addEventListener("submit",e=>{
   e.preventDefault();
   const title=$("fTitle").value.trim(); if(!title) return;
   const base=editing?Object.assign({},editing):{id:uid(),createdAt:new Date().toISOString(),done:false,followups:[]};
-  Object.assign(base,{kind:editKind,title,person:editKind==="pedido"?$("fPerson").value.trim():"",due:$("fDue").value,time:$("fTime").value,
+  const who=$("fPerson").value.trim();
+  Object.assign(base,{kind:who?"pedido":"eu",title,person:who,due:$("fDue").value,time:$("fTime").value,
     area:$("fArea").value.trim(),priority:$("fPrio").value,recur:$("fRecur").value,notes:$("fNotes").value.trim(),requested:$("fReq").value});
   persist(base); $("editor").close();
   toast(editing?"Alterações salvas":"Adicionada");
