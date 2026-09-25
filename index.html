@@ -375,6 +375,30 @@ body{background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px
 .item::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--eu);transform:scaleY(0);transition:transform .35s var(--ease)}
 .item.k-pedido::before{background:var(--ped)}
 .item:not(.done):hover::before{transform:scaleY(1)}
+.item.tc::before{background:var(--tc);transform:scaleY(1);width:4px}
+.item.tc:not(.done){background:color-mix(in srgb,var(--tc) 9%,transparent)}
+.item.tc:not(.done) .check{background:color-mix(in srgb,var(--tc) 18%,transparent)}
+.item.tc:not(.done) .check{border-color:var(--tc)}
+.ev.tc{background:var(--surface2);background:color-mix(in srgb,var(--tc) 24%,var(--surface));color:var(--ink);box-shadow:inset 3px 0 0 var(--tc)}
+.dots i.tc{background:var(--tc)}
+.cal .ev.late{background:#C8323A;color:#FFFFFF;font-weight:600;box-shadow:none}
+.cal .dots i.late{background:#C8323A}
+.legend .c::before{background:#C8323A}
+.item.lateocc:not(.done){background:var(--late-soft)}
+.item.lateocc::before{background:#C8323A;transform:scaleY(1);width:4px}
+.resolved{display:flex;align-items:center;gap:12px;cursor:pointer;padding:12px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--bg);position:relative}
+.resolved input{position:absolute;opacity:0;pointer-events:none}
+.resolved i{flex:none;width:42px;height:24px;border-radius:999px;background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line);position:relative;transition:background-color .25s var(--ease)}
+.resolved i::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .25s var(--ease)}
+.resolved input:checked+i{background:var(--ped)}
+.resolved input:checked+i::after{transform:translateX(18px)}
+.resolved input:focus-visible+i{outline:2px solid var(--eu);outline-offset:2px}
+.resolved b{font-weight:600;font-size:14px}
+.swatches{display:flex;flex-wrap:wrap;gap:10px;padding:2px 0}
+.swatches button{width:32px;height:32px;border-radius:50%;border:2px solid var(--surface);background:var(--sw);box-shadow:0 0 0 1px var(--line);padding:0;position:relative}
+.swatches button.auto{background:conic-gradient(var(--eu) 0 50%,var(--ped) 50% 100%)}
+.swatches button.on{box-shadow:0 0 0 2px var(--ink)}
+.swatches button.on::after{content:"";position:absolute;left:10px;top:6px;width:7px;height:12px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
 @media (max-width:900px){
   .banner{grid-template-columns:repeat(3,minmax(0,1fr))}
   .banner .ph:nth-child(n+4){display:none}
@@ -651,6 +675,8 @@ body[data-view="livros"] .quick{display:none}
         <option value="monthly">Todo mês</option>
       </select>
     </label>
+    <label class="resolved"><input type="checkbox" id="fDone"><i aria-hidden="true"></i><b>Resolvido</b></label>
+    <div class="field"><span>Cor</span><div class="swatches" id="fColors" role="radiogroup" aria-label="Cor da tarefa"></div></div>
     <div hidden>
       <input id="fTime" type="time"><input id="fArea" list="areaList">
       <select id="fPrio"><option value="normal">Normal</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select>
@@ -940,6 +966,10 @@ async function connect(){
 }
 
 /* ---------- Actions ---------- */
+function spawnNext(t){
+  const n=Object.assign({},t,{id:uid(),due:nextDue(t.due,t.recur),requested:nextDue(reqDate(t),t.recur),done:false,followups:[],createdAt:new Date().toISOString()});
+  delete n.doneAt; return n;
+}
 function toggle(id){
   const t=items.get(id); if(!t) return;
   const before=Object.assign({},t);
@@ -947,8 +977,7 @@ function toggle(id){
     const u=Object.assign({},t,{done:true,doneAt:new Date().toISOString()});
     let spawned=null;
     if(t.recur && t.recur!=="none" && t.due){
-      spawned=Object.assign({},t,{id:uid(),due:nextDue(t.due,t.recur),done:false,doneAt:null,followups:[],createdAt:new Date().toISOString()});
-      delete spawned.doneAt;
+      spawned=spawnNext(t);
     }
     persist(u); if(spawned) persist(spawned);
     toast(t.kind==="pedido"?"Pedido marcado como recebido":"Tarefa concluída",()=>{persist(before);if(spawned)removeItem(spawned.id)});
@@ -984,7 +1013,7 @@ function meta(t){
   return b.join("");
 }
 function row(t){
-  return '<li class="item k-'+t.kind+(t.done?" done":"")+'" data-id="'+t.id+'">'+
+  return '<li class="item k-'+t.kind+(t.done?" done":"")+(t._late?" lateocc":"")+(t.color?" tc":"")+'" data-id="'+t.id+'"'+(t.color?' style="--tc:'+esc(t.color)+'"':"")+'>'+
     '<button class="check" data-act="toggle" aria-label="'+(t.done?"Reabrir":"Concluir")+'"></button>'+
     '<div class="body" data-act="open"><div class="title">'+(t.priority==="alta"?'<span class="flag" title="Prioridade alta"></span>':"")+esc(t.title)+'</div>'+
     (t.notes?'<div class="desc">'+esc(t.notes)+'</div>':"")+
@@ -1032,25 +1061,30 @@ function viewCal(){
   const start=new Date(y,mo,1); start.setDate(1-start.getDay());
   const t=todayISO();
   const byDay={};
-  all().filter(x=>x.due&&matches(x)).forEach(x=>{(byDay[x.due]=byDay[x.due]||[]).push(x)});
+  const add=(k,x)=>{(byDay[k]=byDay[k]||[]).push(x)};
+  all().filter(matches).forEach(x=>{
+    const r=reqDate(x); add(r,x);
+    if(isLate(x)&&x.due!==r) add(x.due,Object.assign({},x,{_late:true}));
+  });
+  const calSort=(a,b)=>((b._late?1:0)-(a._late?1:0))||(a.done-b.done)||byDue(a,b);
   const dows=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
   let cells=dows.map(d=>'<div class="dow">'+d+"</div>").join("");
   for(let i=0;i<42;i++){
     const d=new Date(start); d.setDate(start.getDate()+i);
-    const s=iso(d); const evs=(byDay[s]||[]).sort((a,b)=>(a.done-b.done)||byDue(a,b));
+    const s=iso(d); const evs=(byDay[s]||[]).sort(calSort);
     const cls=["day"]; if(d.getMonth()!==mo)cls.push("out"); if(s===t)cls.push("today"); if(s===calSel)cls.push("sel");
-    const shown=evs.slice(0,3).map(e=>'<span class="ev '+(isLate(e)?"late":e.kind)+(e.done?" dn":"")+'" data-open="'+e.id+'" title="Abrir tarefa">'+(e.time?e.time+" ":"")+esc(e.title)+"</span>").join("");
-    const dots='<span class="dots">'+evs.slice(0,6).map(e=>'<i class="'+(isLate(e)?"late":e.kind)+'"></i>').join("")+"</span>";
+    const shown=evs.slice(0,3).map(e=>'<span class="ev '+(e._late?"late":e.color?"tc":e.kind)+(e.done?" dn":"")+'"'+(e.color&&!e._late?' style="--tc:'+esc(e.color)+'"':"")+' data-open="'+e.id+'" title="'+(e._late?"Prazo vencido":"Abrir tarefa")+'">'+(e._late?"Prazo: ":"")+(e.time?e.time+" ":"")+esc(e.title)+"</span>").join("");
+    const dots='<span class="dots">'+evs.slice(0,6).map(e=>'<i class="'+(e._late?"late":e.color?"tc":e.kind)+'"'+(e.color&&!e._late?' style="--tc:'+esc(e.color)+'"':"")+'></i>').join("")+"</span>";
     cells+='<button class="'+cls.join(" ")+'" data-day="'+s+'"><span class="num">'+d.getDate()+"</span>"+shown+(evs.length>3?'<span class="more">+'+(evs.length-3)+" mais</span>":"")+dots+"</button>";
     if(i===34 && new Date(start.getFullYear(),start.getMonth(),start.getDate()+35).getMonth()!==mo) break;
   }
-  const sel=(byDay[calSel]||[]).sort((a,b)=>(a.done-b.done)||byDue(a,b));
+  const sel=(byDay[calSel]||[]).sort(calSort);
   const panel='<div class="section" style="margin-top:22px"><h2>'+fmtLong.format(parse(calSel))+' <small>'+sel.length+" item"+(sel.length===1?"":"s")+'</small></h2>'+
     (sel.length?list(sel):empty("Dia livre","Nada marcado para este dia."))+
     '<button class="btn" data-addday="'+calSel+'" style="margin-top:10px">Adicionar neste dia</button></div>';
   return '<div class="calhead"><h2>'+fmtMonth.format(m)+'</h2><button class="btn" data-cal="-1" aria-label="Mês anterior">‹</button><button class="btn" data-cal="0">Hoje</button><button class="btn" data-cal="1" aria-label="Próximo mês">›</button></div>'+
     '<div class="cal">'+cells+"</div>"+
-    '<div class="legend"><span class="a">Minhas tarefas</span><span class="b">Pedidos</span><span class="c">Atrasadas</span></div>'+panel;
+    '<div class="legend"><span class="a">Minhas tarefas</span><span class="b">Pedidos</span><span class="c">Prazo vencido</span></div>'+panel;
 }
 
 function viewGeral(){
@@ -1233,6 +1267,10 @@ function render(){
 }
 
 /* ---------- Editor ---------- */
+const COLORS=[["","Automática"],["#C9667E","Rosa"],["#8E3B52","Vinho"],["#C47A55","Terracota"],["#C9A13B","Mostarda"],["#7E9A6B","Sálvia"],["#4F8C8A","Verde-água"],["#5B7DB1","Azul"],["#9181B8","Lavanda"],["#8C7F77","Cinza"]];
+let editColor="";
+function paintColors(){$("fColors").innerHTML=COLORS.map(([c,n])=>'<button type="button" role="radio" aria-checked="'+(c===editColor)+'" aria-label="'+n+'" title="'+n+'" data-color="'+c+'" class="'+(c?"":"auto ")+(c===editColor?"on":"")+'" style="--sw:'+(c||"transparent")+'"></button>').join("")}
+$("fColors").addEventListener("click",e=>{const b=e.target.closest("button[data-color]");if(b){editColor=b.dataset.color;paintColors()}});
 function setEditKind(k){
   editKind=k;
   $("edKind").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.kind===k));
@@ -1245,6 +1283,8 @@ function openEditor(t,defaults){
   $("fTitle").value=d.title||""; $("fPerson").value=d.person||""; $("fDue").value=d.due||""; $("fTime").value=d.time||"";
   $("fArea").value=d.area||""; $("fPrio").value=d.priority||"normal"; $("fRecur").value=d.recur||"none"; $("fNotes").value=d.notes||"";
   $("fReq").value=reqDate(d);
+  editColor=d.color||""; paintColors();
+  $("fDone").checked=!!d.done;
   $("edDelete").hidden=!t;
   const h=$("fHist");
   if(t){
@@ -1268,8 +1308,14 @@ $("edForm").addEventListener("submit",e=>{
   const base=editing?Object.assign({},editing):{id:uid(),createdAt:new Date().toISOString(),done:false,followups:[]};
   const who=$("fPerson").value.trim();
   Object.assign(base,{kind:who?"pedido":"eu",title,person:who,due:$("fDue").value,time:$("fTime").value,
-    area:$("fArea").value.trim(),priority:$("fPrio").value,recur:$("fRecur").value,notes:$("fNotes").value.trim(),requested:$("fReq").value});
-  persist(base); $("editor").close();
+    area:$("fArea").value.trim(),priority:$("fPrio").value,recur:$("fRecur").value,notes:$("fNotes").value.trim(),requested:$("fReq").value,color:editColor});
+  const wasDone=!!(editing&&editing.done), nowDone=$("fDone").checked;
+  base.done=nowDone;
+  if(nowDone&&!wasDone) base.doneAt=new Date().toISOString();
+  if(!nowDone) delete base.doneAt;
+  persist(base);
+  if(nowDone&&!wasDone&&base.recur&&base.recur!=="none"&&base.due) persist(spawnNext(base));
+  $("editor").close();
   toast(editing?"Alterações salvas":"Adicionada");
 });
 
