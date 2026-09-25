@@ -1,5 +1,4 @@
 window.AGENDA_CONFIG = {
-  supabaseUrl: "sb_publishable_KfdqwBX4_xlhsPOcJYOf4w_vWKsHgs1
-",
-  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jbmRlZmNtbXpmZm5vb3lpd3BwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzU1MDcsImV4cCI6MjEwNTkxMTUwN30.1KyOlUtRhF3ntRXSpRgUgsFNHwVCQTXrMlm3i35Ohv4"
+  supabaseUrl: "https://abcdefgh.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 };
