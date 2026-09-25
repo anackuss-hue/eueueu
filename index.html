@@ -123,6 +123,8 @@ button:active{transform:translateY(1px)}
 .title{font-weight:500;overflow-wrap:anywhere}
 .done .title{text-decoration:line-through;color:var(--muted)}
 .flag{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--gold);margin-right:8px;vertical-align:middle;position:relative;top:-1px}
+.desc{font-size:13.5px;color:var(--muted);margin-top:2px;white-space:pre-line;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.done .desc{opacity:.7}
 .meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--muted);margin-top:3px}
 .meta .who{color:var(--ped);font-weight:600}
 .meta .lateTxt{color:var(--late);font-weight:600}
@@ -156,11 +158,12 @@ button:active{transform:translateY(1px)}
 .day .num{font-size:13px;font-weight:500;width:26px;height:26px;display:grid;place-items:center;border-radius:50%}
 .day.today .num{background:var(--cta);color:var(--cta-ink)}
 .day.sel{box-shadow:inset 0 0 0 2px var(--ped)}
-.ev{font-size:12px;padding:1px 6px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev{cursor:pointer;font-size:12px;padding:1px 6px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev.eu{background:var(--eu-soft);color:var(--eu)}
 .ev.pedido{background:var(--ped-soft);color:var(--ped)}
 .ev.late{background:var(--late-soft);color:var(--late)}
 .ev.dn{opacity:.5;text-decoration:line-through}
+.ev:hover{filter:brightness(.95);box-shadow:inset 0 0 0 1px currentColor}
 .more{font-size:12px;color:var(--muted);padding-left:6px}
 .dots{display:none;gap:3px;flex-wrap:wrap;padding-left:4px}
 .dots i{width:6px;height:6px;border-radius:50%;background:var(--eu)}
@@ -628,21 +631,15 @@ body[data-view="livros"] .quick{display:none}
 <dialog id="editor">
   <form class="dlg" id="edForm">
     <h2 id="edTitle">Nova tarefa</h2>
-    <div class="seg" role="group" aria-label="Tipo" id="edKind">
+    <div class="seg" role="group" aria-label="Tipo" id="edKind" hidden>
       <button type="button" data-kind="eu" class="on">Eu faço</button>
       <button type="button" data-kind="pedido">Pedi para alguém</button>
     </div>
-    <label class="field"><span>O que é</span><input id="fTitle" required autocomplete="off"></label>
-    <label class="field" id="personField" hidden><span>Pedi para</span><input id="fPerson" list="peopleList" autocomplete="off"></label>
+    <label class="field"><span>Título</span><input id="fTitle" required autocomplete="off"></label>
+    <label class="field"><span>Descrição</span><textarea id="fNotes" placeholder="Detalhes, contexto, links"></textarea></label>
     <div class="row2">
-      <label class="field"><span id="dueLabel">Data</span><input id="fDue" type="date"></label>
-      <label class="field"><span>Horário</span><input id="fTime" type="time"></label>
-    </div>
-    <div class="row2">
-      <label class="field"><span>Área</span><input id="fArea" list="areaList" autocomplete="off" placeholder="Ex: Welcome Weddings"></label>
-      <label class="field"><span>Prioridade</span>
-        <select id="fPrio"><option value="normal">Normal</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select>
-      </label>
+      <label class="field"><span>Data do pedido</span><input id="fReq" type="date"></label>
+      <label class="field"><span>Data para conclusão</span><input id="fDue" type="date"></label>
     </div>
     <label class="field"><span>Repetir</span>
       <select id="fRecur">
@@ -653,7 +650,10 @@ body[data-view="livros"] .quick{display:none}
         <option value="monthly">Todo mês</option>
       </select>
     </label>
-    <label class="field"><span>Anotações</span><textarea id="fNotes" placeholder="Detalhes, links, contexto"></textarea></label>
+    <div hidden>
+      <input id="fPerson" list="peopleList"><input id="fTime" type="time"><input id="fArea" list="areaList">
+      <select id="fPrio"><option value="normal">Normal</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select>
+    </div>
     <div class="hist" id="fHist" hidden></div>
     <div class="dlg-foot">
       <button type="button" class="btn danger" id="edDelete">Excluir</button>
@@ -837,6 +837,7 @@ function nextDue(s,r){
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function uid(){return "t"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 const $ = id => document.getElementById(id);
+function reqDate(t){return t.requested||(t.createdAt?iso(new Date(t.createdAt)):todayISO())}
 function isLate(t){return !t.done && t.due && t.due < todayISO()}
 function matches(t){
   if(!q) return true;
@@ -970,14 +971,14 @@ function meta(t){
     if(isLate(t)){const n=diffDays(t.due,todayISO());b.push('<span class="lateTxt">Atrasada '+(n===1?"desde ontem":"há "+n+" dias")+'</span>')}
     else b.push("<span>"+(t.kind==="pedido"?"Prazo: ":"")+dateLabel(t.due)+(t.time?" às "+t.time:"")+"</span>");
   }else if(t.time) b.push("<span>"+t.time+"</span>");
-  if(t.kind==="pedido" && t.createdAt && !t.done){
-    const n=diffDays(iso(new Date(t.createdAt)),todayISO());
+  if(t.kind==="pedido" && !t.done){
+    const n=diffDays(reqDate(t),todayISO());
     b.push("<span>Pedido "+(n===0?"hoje":n===1?"ontem":"há "+n+" dias")+"</span>");
   }
   if(t.followups && t.followups.length) b.push("<span>Cobrei "+t.followups.length+"x, última em "+dm(t.followups[t.followups.length-1])+"</span>");
   if(t.area) b.push('<span class="chip">'+esc(t.area)+"</span>");
   if(t.recur && t.recur!=="none") b.push("<span>Repete</span>");
-  if(t.notes) b.push("<span>Tem anotação</span>");
+
   if(t.done && t.doneAt) b.push("<span>Concluída em "+dm(t.doneAt)+"</span>");
   return b.join("");
 }
@@ -985,6 +986,7 @@ function row(t){
   return '<li class="item k-'+t.kind+(t.done?" done":"")+'" data-id="'+t.id+'">'+
     '<button class="check" data-act="toggle" aria-label="'+(t.done?"Reabrir":"Concluir")+'"></button>'+
     '<div class="body" data-act="open"><div class="title">'+(t.priority==="alta"?'<span class="flag" title="Prioridade alta"></span>':"")+esc(t.title)+'</div>'+
+    (t.notes?'<div class="desc">'+esc(t.notes)+'</div>':"")+
     '<div class="meta">'+meta(t)+'</div></div>'+
     (view==="geral"&&!t.done?'<button class="mini" data-act="today" style="color:var(--eu)">Fazer hoje</button>':"")+
     (t.kind==="pedido"&&!t.done?'<button class="mini" data-act="follow" title="Registrar que cobrei hoje">Cobrei</button>':"")+
@@ -1016,7 +1018,7 @@ function viewHoje(){
     '<div class="stat"><strong>'+doneToday+'</strong><span>feitas hoje</span></div></div>'+
     "<h3>Aguardando retorno</h3>"+
     (peds.length?'<ul class="waitlist">'+peds.slice(0,6).map(p=>{
-      const n=p.createdAt?diffDays(iso(new Date(p.createdAt)),t):0;
+      const n=diffDays(reqDate(p),t);
       return '<li data-open="'+p.id+'"><div>'+esc(p.title)+'</div><div class="w">'+esc(p.person||"Sem nome")+" · pedido há "+n+" dia"+(n===1?"":"s")+"</div></li>";
     }).join("")+"</ul>"+(peds.length>6?'<button class="btn ghost" data-goto="pedidos" style="padding-left:0">Ver todos os '+peds.length+"</button>":"")
     :'<p style="color:var(--muted);margin:0;font-size:14px">Nenhum pedido em aberto.</p>')+
@@ -1036,7 +1038,7 @@ function viewCal(){
     const d=new Date(start); d.setDate(start.getDate()+i);
     const s=iso(d); const evs=(byDay[s]||[]).sort((a,b)=>(a.done-b.done)||byDue(a,b));
     const cls=["day"]; if(d.getMonth()!==mo)cls.push("out"); if(s===t)cls.push("today"); if(s===calSel)cls.push("sel");
-    const shown=evs.slice(0,3).map(e=>'<span class="ev '+(isLate(e)?"late":e.kind)+(e.done?" dn":"")+'">'+(e.time?e.time+" ":"")+esc(e.title)+"</span>").join("");
+    const shown=evs.slice(0,3).map(e=>'<span class="ev '+(isLate(e)?"late":e.kind)+(e.done?" dn":"")+'" data-open="'+e.id+'" title="Abrir tarefa">'+(e.time?e.time+" ":"")+esc(e.title)+"</span>").join("");
     const dots='<span class="dots">'+evs.slice(0,6).map(e=>'<i class="'+(isLate(e)?"late":e.kind)+'"></i>').join("")+"</span>";
     cells+='<button class="'+cls.join(" ")+'" data-day="'+s+'"><span class="num">'+d.getDate()+"</span>"+shown+(evs.length>3?'<span class="more">+'+(evs.length-3)+" mais</span>":"")+dots+"</button>";
     if(i===34 && new Date(start.getFullYear(),start.getMonth(),start.getDate()+35).getMonth()!==mo) break;
@@ -1233,8 +1235,6 @@ function render(){
 function setEditKind(k){
   editKind=k;
   $("edKind").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.kind===k));
-  $("personField").hidden=k!=="pedido";
-  $("dueLabel").textContent=k==="pedido"?"Prazo para retorno":"Data";
 }
 function openEditor(t,defaults){
   editing=t||null;
@@ -1243,13 +1243,14 @@ function openEditor(t,defaults){
   setEditKind(d.kind);
   $("fTitle").value=d.title||""; $("fPerson").value=d.person||""; $("fDue").value=d.due||""; $("fTime").value=d.time||"";
   $("fArea").value=d.area||""; $("fPrio").value=d.priority||"normal"; $("fRecur").value=d.recur||"none"; $("fNotes").value=d.notes||"";
+  $("fReq").value=reqDate(d);
   $("edDelete").hidden=!t;
   const h=$("fHist");
   if(t){
     let s="Criada em "+new Date(t.createdAt||Date.now()).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
     if(t.followups&&t.followups.length) s+="<ul>"+t.followups.map(f=>"<li>Cobrei em "+new Date(f).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})+"</li>").join("")+"</ul>";
     if(t.done&&t.doneAt) s+="<div>Concluída em "+new Date(t.doneAt).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"})+"</div>";
-    h.innerHTML=s; h.hidden=false;
+    h.innerHTML=s; h.hidden=true;
   }else h.hidden=true;
   $("editor").showModal();
   setTimeout(()=>$("fTitle").focus(),30);
@@ -1265,7 +1266,7 @@ $("edForm").addEventListener("submit",e=>{
   const title=$("fTitle").value.trim(); if(!title) return;
   const base=editing?Object.assign({},editing):{id:uid(),createdAt:new Date().toISOString(),done:false,followups:[]};
   Object.assign(base,{kind:editKind,title,person:editKind==="pedido"?$("fPerson").value.trim():"",due:$("fDue").value,time:$("fTime").value,
-    area:$("fArea").value.trim(),priority:$("fPrio").value,recur:$("fRecur").value,notes:$("fNotes").value.trim()});
+    area:$("fArea").value.trim(),priority:$("fPrio").value,recur:$("fRecur").value,notes:$("fNotes").value.trim(),requested:$("fReq").value});
   persist(base); $("editor").close();
   toast(editing?"Alterações salvas":"Adicionada");
 });
