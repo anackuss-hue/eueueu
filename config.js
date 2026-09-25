@@ -1,6 +1,5 @@
-// Cole aqui os dados do seu projeto Supabase
-// (no Supabase: Project Settings > API, ou o botão "Connect")
 window.AGENDA_CONFIG = {
-  supabaseUrl: "COLE_AQUI_A_PROJECT_URL",
-  supabaseAnonKey: "COLE_AQUI_A_ANON_PUBLIC_KEY"
+  supabaseUrl: "sb_publishable_KfdqwBX4_xlhsPOcJYOf4w_vWKsHgs1
+",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jbmRlZmNtbXpmZm5vb3lpd3BwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAzMzU1MDcsImV4cCI6MjEwNTkxMTUwN30.1KyOlUtRhF3ntRXSpRgUgsFNHwVCQTXrMlm3i35Ohv4"
 };
