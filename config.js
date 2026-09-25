@@ -1,4 +1,4 @@
 window.AGENDA_CONFIG = {
-  supabaseUrl: "https://abcdefgh.supabase.co",
-  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  supabaseUrl: "https://ocndefcmmzffnooyiwpp.supabase.co",
+  supabaseAnonKey: "sb_publishable_KfdqwBX4_xlhsPOcJYOf4w_vWKsHgs1"
 };
